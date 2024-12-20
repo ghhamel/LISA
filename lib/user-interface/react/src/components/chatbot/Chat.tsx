@@ -125,7 +125,7 @@ export default function Chat ({ sessionId }) {
     const bottomRef = useRef(null);
     const auth = useAuth();
 
-    const oneThroughTenOptions = [...Array(10).keys()].map((i) => {
+    const oneThroughTenOptions = [...Array(50).keys()].map((i) => {
         i = i + 1;
         return {
             value: i.toString(),
