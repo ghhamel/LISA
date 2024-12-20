@@ -18,14 +18,18 @@ import os
 from io import BytesIO
 from typing import List, Optional
 
+import tempfile
+
 import boto3
 import docx
 from botocore.exceptions import ClientError
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from langchain_community.document_loaders import CSVLoader
+from langchain_community.document_loaders import JSONLoader
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
-from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE
+from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE, CSV_FILE, JSONL_FILE
 from utilities.exceptions import RagUploadException
 
 logger = logging.getLogger(__name__)
@@ -41,16 +45,18 @@ def _get_s3_uri(bucket: str, key: str) -> str:
     return f"s3://{bucket}/{key}"
 
 
-def _extract_text_by_content_type(content_type: str, s3_object: dict) -> str:
+def _extract_text_by_content_type(content_type: str, s3_object: dict, metadata: dict) -> str:
     extraction_functions = {
         PDF_FILE: _extract_pdf_content,
         DOCX_FILE: _extract_docx_content,
-        TEXT_FILE: lambda obj: obj["Body"].read(),
+        CSV_FILE: _extract_csv_content,
+        JSONL_FILE: _extract_jsonl_content,
+        TEXT_FILE: lambda obj, md: [Document(page_content=obj["Body"].read(), metadata=md)],
     }
 
     extraction_function = extraction_functions.get(content_type)
     if extraction_function:
-        return str(extraction_function(s3_object))
+        return extraction_function(s3_object, metadata)
     else:
         logger.error(f"File has unsupported content type: {content_type}")
         raise RagUploadException("Unsupported file type")
@@ -76,7 +82,7 @@ def _generate_chunks(docs: List[Document], chunk_size: Optional[int], chunk_over
     return text_splitter.split_documents(docs)  # type: ignore [no-any-return]
 
 
-def _extract_pdf_content(s3_object: dict) -> str:
+def _extract_pdf_content(s3_object: dict, metadata: dict) -> str:
     """Return text extracted from PDF.
 
     Extracts text content from a PDF file in an S3 object.
@@ -98,10 +104,12 @@ def _extract_pdf_content(s3_object: dict) -> str:
         logger.error(f"Error reading PDF file: {e}")
         raise
 
-    return "".join(page.extract_text() or "" for page in pdf_reader.pages)
+    output = "".join(page.extract_text() or "" for page in pdf_reader.pages)
+    docs = [Document(page_content=output, metadata=metadata)]
+    return docs
 
 
-def _extract_docx_content(s3_object: dict) -> str:
+def _extract_docx_content(s3_object: dict, metadata: dict) -> str:
     """Return text extracted from docx document.
 
     Extracts text content from a docx file in an S3 object.
@@ -121,7 +129,67 @@ def _extract_docx_content(s3_object: dict) -> str:
     doc = docx.Document(docx=bytes_as_file_like)
 
     output = "\n".join(para.text for para in doc.paragraphs)
-    return output
+    docs = [Document(page_content=output, metadata=metadata)]
+    return docs
+
+
+def _extract_csv_content(s3_object: dict, metadata: dict) -> str:
+    """Return text extracted from CSV document.
+
+    Extracts text content from a CSV file in an S3 object.
+
+    Parameters
+    ----------
+    s3_object (dict): an S3 object containing a CSV file body
+
+    Returns
+    -------
+    str: The extracted text from the docx file.
+    """
+    streaming_body = s3_object["Body"]
+    file_as_bytes = streaming_body.read()
+
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
+        temp_file.write(file_as_bytes)
+        temp_file_path = temp_file.name
+
+    loader = CSVLoader(file_path=temp_file_path,
+        csv_args={
+            'delimiter': ',',
+            'quotechar': '"'
+        }
+    )
+    docs = loader.load()
+    return docs
+
+
+def _extract_jsonl_content(s3_object: dict, metadata: dict) -> str:
+    """Return text extracted from JSON lines document.
+
+    Extracts text content from a JSON lines file in an S3 object.
+
+    Parameters
+    ----------
+    s3_object (dict): an S3 object containing a JSONL file body
+
+    Returns
+    -------
+    str: The extracted text from the docx file.
+    """
+    streaming_body = s3_object["Body"]
+    file_as_bytes = streaming_body.read()
+
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
+        temp_file.write(file_as_bytes)
+        temp_file_path = temp_file.name
+
+    loader = JSONLoader(file_path=temp_file_path,
+                        jq_schema='.content',
+                        text_content=False,
+                        json_lines=True)
+
+    docs = loader.load()
+    return docs
 
 
 def process_record(
@@ -152,12 +220,7 @@ def process_record(
             logger.error(f"Error getting object from S3: {key}")
             raise e
         s3_uri = _get_s3_uri(bucket=bucket, key=key)
-        extracted_text = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object)
-        docs = [Document(page_content=extracted_text, metadata=_get_metadata(s3_uri=s3_uri, name=key))]
-        doc_chunks = _generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        # Update part number of doc metadata
-        for i, doc in enumerate(doc_chunks):
-            doc.metadata["part"] = i + 1
-        chunks.append(doc_chunks)
+        docs = _extract_text_by_content_type(content_type=content_type, s3_object=s3_object, metadata=_get_metadata(s3_uri=s3_uri, name=key))
+        chunks.append(_generate_chunks(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap))
 
     return chunks

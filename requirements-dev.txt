@@ -9,3 +9,4 @@ pydantic==2.8.2
 pytest==8.3.2
 pytest-asyncio==0.23.2
 uvicorn==0.22.0
+langchain-community

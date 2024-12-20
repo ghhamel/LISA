@@ -16,3 +16,5 @@
 PDF_FILE = "pdf"
 TEXT_FILE = "txt"
 DOCX_FILE = "docx"
+CSV_FILE = "csv"
+JSONL_FILE = "jsonl"
