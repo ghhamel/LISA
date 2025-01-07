@@ -95,6 +95,7 @@ def _extract_pdf_content(s3_object: dict, metadata: dict) -> str:
     -------
     str: The extracted text from the PDF file.
     """
+    logger.info(f"extracting PDF content...")
     file_content = s3_object["Body"].read()
     pdf_file = BytesIO(file_content)
 
@@ -122,6 +123,7 @@ def _extract_docx_content(s3_object: dict, metadata: dict) -> str:
     -------
     str: The extracted text from the docx file.
     """
+    logger.info(f"extracting DOCX content...")
     streaming_body = s3_object["Body"]
     file_as_bytes = streaming_body.read()
     bytes_as_file_like = BytesIO(file_as_bytes)
@@ -146,10 +148,11 @@ def _extract_csv_content(s3_object: dict, metadata: dict) -> str:
     -------
     str: The extracted text from the docx file.
     """
+    logger.info(f"extracting CSV content...")
     streaming_body = s3_object["Body"]
     file_as_bytes = streaming_body.read()
 
-    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False, mode="wb+") as temp_file:
         temp_file.write(file_as_bytes)
         temp_file_path = temp_file.name
 
@@ -176,10 +179,11 @@ def _extract_jsonl_content(s3_object: dict, metadata: dict) -> str:
     -------
     str: The extracted text from the docx file.
     """
+    logger.info(f"extracting JSONL content...")
     streaming_body = s3_object["Body"]
     file_as_bytes = streaming_body.read()
 
-    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as temp_file:
+    with tempfile.NamedTemporaryFile(delete=False, mode="wb+") as temp_file:
         temp_file.write(file_as_bytes)
         temp_file_path = temp_file.name
 
