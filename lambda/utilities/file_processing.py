@@ -26,7 +26,7 @@ from botocore.exceptions import ClientError
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.document_loaders import CSVLoader
-from langchain_community.document_loaders import JSONLoader
+#from langchain_community.document_loaders import JSONLoader
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 from utilities.constants import DOCX_FILE, PDF_FILE, TEXT_FILE, CSV_FILE, JSONL_FILE
@@ -181,8 +181,14 @@ def _extract_jsonl_content(s3_object: dict, metadata: dict) -> str:
     """
     logger.info(f"extracting JSONL content...")
     streaming_body = s3_object["Body"]
-    file_as_bytes = streaming_body.read()
+    file_as_lines = streaming_body.read().decode('utf-8').splitlines()
 
+    logger.info(f"metadata: {metadata}")
+    docs = []
+    for line in file_as_lines:
+        docs.append(Document(page_content=line, metadata=metadata))
+
+    """
     with tempfile.NamedTemporaryFile(delete=False, mode="wb+") as temp_file:
         temp_file.write(file_as_bytes)
         temp_file_path = temp_file.name
@@ -193,6 +199,7 @@ def _extract_jsonl_content(s3_object: dict, metadata: dict) -> str:
                         json_lines=True)
 
     docs = loader.load()
+    """
     return docs
 
 
