@@ -96,7 +96,7 @@ export default function Chat ({ sessionId }) {
     });
     const [streamingEnabled, setStreamingEnabled] = useState(false);
     const [chatHistoryBufferSize, setChatHistoryBufferSize] = useState<number>(3);
-    const [ragTopK, setRagTopK] = useState<number>(3);
+    const [ragTopK, setRagTopK] = useState<number>(20);
     const [isStreaming, setIsStreaming] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     const [isRunning, setIsRunning] = useState(false);
