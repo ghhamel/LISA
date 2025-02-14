@@ -71,7 +71,7 @@ export default function Chat ({ sessionId }) {
     const [aiPrefix, setAiPrefix] = useState('Assistant');
     const [fileContext, setFileContext] = useState('');
     const [promptTemplate, setPromptTemplate] = useState(
-        `The following is a friendly conversation between a human and an AI. The AI is talkative and provides lots of specific details from its context. If the AI does not know the answer to a question, it truthfully says it does not know.
+        `The following is a friendly conversation between a human and an AI. The AI is a helpful security assistant. The provided context includes security findings regarding the user's AWS account.  In the security findings data, the most important severity level is "Critical" which is followed by "High", "Medium", and then "Low".  List the most important findings first and be sure to include all the distinct, relevant findings.  When you list specific security findings, format them as a numbered list.  If the AI does not know the answer to a question, it truthfully says it does not know.
 
           Current conversation:
           {history}
