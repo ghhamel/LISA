@@ -2,24 +2,58 @@ mountS3DebUrl: https://s3.amazonaws.com/mountpoint-s3-release/latest/x86_64/moun
 stackSynthesizer: CliCredentialsStackSynthesizer
 
 ragRepositories:
+
+ - repositoryId: demo-doc-text
+   type: pgvector
+   rdsConfig:
+     username: postgres
+
  - repositoryId: sh-rag-text
    type: pgvector
    rdsConfig:
      username: postgres
+   pipelines:
+    - chunkOverlap: 51
+      chunkSize: 8192 # This is kinda large for a chunk size, but 512 is not large enough for the Security Hub records.  average line size is ~2500 bytes and max is ~10KB.
+      embeddingModel: titan-embed-text-v2
+      s3Bucket: ghhamel-genai-capstone-txt
+      s3Prefix: /
+      trigger: event
+      collectionName: genai-capstone
+
  - repositoryId: sh-rag-csv
    type: pgvector
    rdsConfig:
      username: postgres
+   pipelines:
+    - chunkOverlap: 51
+      chunkSize: 8192 # This is kinda large for a chunk size, but 512 is not large enough for the Security Hub records.  average line size is ~2500 bytes and max is ~10KB.
+      embeddingModel: titan-embed-text-v2
+      s3Bucket: ghhamel-genai-capstone-csv
+      s3Prefix: /
+      trigger: event
+      collectionName: genai-capstone
+
  - repositoryId: sh-rag-jsonl
    type: pgvector
    rdsConfig:
      username: postgres
+   pipelines:
+    - chunkOverlap: 51
+      chunkSize: 8192 # This is kinda large for a chunk size, but 512 is not large enough for the Security Hub records.  average line size is ~2500 bytes and max is ~10KB.
+      embeddingModel: titan-embed-text-v2
+      s3Bucket: ghhamel-genai-capstone-jsonl
+      s3Prefix: /
+      trigger: event
+      collectionName: genai-capstone
+
 
 # - repositoryId: pgvector-rag
 #   type: pgvector
 #   rdsConfig:
 #     username: postgres
      
+# This config is for files uploaded via UI
 ragFileProcessingConfig:
   chunkSize: 512
   chunkOverlap: 51
